@@ -12,6 +12,7 @@ import dashboardRouter from "./routes/dashboard.js";
 import insightsRouter from "./routes/insights.js";
 import versionRouter from "./routes/version.js";
 import historyRouter from "./routes/history.js";
+import { startKeepAlive } from "./services/keepAliveService.js";
 
 const app = express();
 
@@ -62,6 +63,7 @@ const startServer = async () => {
     await connectDB();
     app.listen(PORT, "0.0.0.0", () => {
       console.log(`Server running on port ${PORT}`);
+      startKeepAlive();
     });
   } catch (err) {
     console.error("Failed to start server:", err);
