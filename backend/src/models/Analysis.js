@@ -56,6 +56,14 @@ const analysisSchema = new mongoose.Schema(
             required: true,
             index: true,
         },
+        contentHash: {
+            type: String,
+            index: true,
+        },
+        targetRole: {
+            type: String,
+            default: "",
+        },
         atsScore: {
             type: Number,
             required: true,

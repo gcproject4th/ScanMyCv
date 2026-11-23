@@ -1,3 +1,4 @@
+import crypto from "crypto";
 import { z } from "zod";
 import mongoose from "mongoose";
 
@@ -220,6 +221,28 @@ export const analyzeResumeVersion = asyncHandler(async (req, res) => {
 
   const version = await loadVersion(resume._id, versionId);
 
+  // Exact-Hash Idempotency Cache:
+  // Normalize target role and compute SHA-256 over rawText + normalized targetRole
+  const normalizedRole = (req.body.targetRole || "").trim().toLowerCase();
+  const contentHash = crypto
+    .createHash("sha256")
+    .update(`${version.rawText || ""}::${normalizedRole}`)
+    .digest("hex");
+
+  // Check if an analysis with the exact same contentHash and versionId already exists
+  const existingAnalysis = await Analysis.findOne({
+    versionId: version._id,
+    contentHash,
+  }).sort({ createdAt: -1 });
+
+  if (existingAnalysis) {
+    if (version.latestAnalysisId?.toString() !== existingAnalysis._id.toString()) {
+      version.latestAnalysisId = existingAnalysis._id;
+      await version.save();
+    }
+    return res.status(200).json({ analysis: existingAnalysis, cached: true });
+  }
+
   const { analysis, model, promptTokens, responseTokens } = await analyzeResume({
     rawText: version.rawText,
     targetRole: req.body.targetRole,
@@ -229,6 +252,8 @@ export const analyzeResumeVersion = asyncHandler(async (req, res) => {
     userId: req.user._id,
     resumeId: resume._id,
     versionId: version._id,
+    targetRole: req.body.targetRole || "",
+    contentHash,
     atsScore: analysis.atsScore,
     scoreBreakdown: analysis.scoreBreakdown,
     issues: analysis.issues,
@@ -245,7 +270,7 @@ export const analyzeResumeVersion = asyncHandler(async (req, res) => {
   version.latestAnalysisId = saved._id;
   await version.save();
 
-  res.status(201).json({ analysis: saved });
+  res.status(201).json({ analysis: saved, cached: false });
 });
 
 /**
