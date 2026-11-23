@@ -2,7 +2,6 @@ import { createContext, useContext, useState, useRef, useCallback } from "react"
 import { useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { Sparkles, FileText, CheckCircle2, ArrowRight } from "lucide-react";
-import { Link } from "react-router-dom";
 import { resumesApi } from "@/api/resumes";
 import { resumeKeys } from "@/hooks/useResumes";
 import { dashboardKey } from "@/hooks/useDashboard";
@@ -158,13 +157,13 @@ function GlobalUploadWidget({ isUploading, fileName, stage, lastUploaded, onDism
               <div className="text-xs font-semibold text-[var(--ink)] truncate">
                 {lastUploaded.title || "Resume"} ready!
               </div>
-              <Link
-                to={`/resumes/${lastUploaded._id}`}
+              <a
+                href={`/resumes/${lastUploaded._id}`}
                 onClick={onDismiss}
                 className="text-[11px] font-medium text-[var(--accent)] hover:underline inline-flex items-center gap-1 mt-0.5"
               >
                 View & score now <ArrowRight size={11} />
-              </Link>
+              </a>
             </div>
             <button
               onClick={onDismiss}
