@@ -305,6 +305,19 @@ export const getAllAnalyses = asyncHandler(async (req, res) => {
 });
 
 /**
+ * @desc    Get the latest analysis for a resume
+ * @route   GET /api/resumes/:id/analyze
+ */
+export const getLatestAnalysis = asyncHandler(async (req, res) => {
+  const resume = await loadOwnResume(req);
+  const analysis = await Analysis.findOne({ resumeId: resume._id })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  res.json({ analysis: analysis || null });
+});
+
+/**
  * @desc    Apply AI bullet rewrites and create a new resume version
  * @route   POST /api/resumes/:id/rewrite
  */

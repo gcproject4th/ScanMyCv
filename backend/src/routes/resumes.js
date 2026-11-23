@@ -20,6 +20,7 @@ import {
   analyzeResumeVersion,
   getVersionAnalysis,
   getAllAnalyses,
+  getLatestAnalysis,
   applyRewrites,
   getDiffBetweenVersions,
 } from "../controllers/resume.controller.js";
@@ -46,13 +47,17 @@ router.get(
 );
 
 // Analyses & AI Processing
-router.post(
-  "/:id/analyze",
-  analyzeLimiter,
-  validate(idParamSchema, "params"),
-  validate(analysisBodySchema, "body"),
-  analyzeResumeVersion
-);
+router.route("/:id/analyze")
+  .post(
+    analyzeLimiter,
+    validate(idParamSchema, "params"),
+    validate(analysisBodySchema, "body"),
+    analyzeResumeVersion
+  )
+  .get(
+    validate(idParamSchema, "params"),
+    getLatestAnalysis
+  );
 
 router.get(
   "/:id/versions/:versionId/analysis",
