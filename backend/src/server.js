@@ -2,6 +2,8 @@ import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import morgan from "morgan";
+import compression from "compression";
+import helmet from "helmet";
 import healthRouter from "./routes/health.js";
 import connectDB from "./config/dpconfig.js";
 import { errorHandler, notFound } from "./middleware/errorHandle.js";
@@ -19,7 +21,15 @@ const app = express();
 // 1. TRUST PROXY MUST BE FIRST (Before CORS & Cookie Parser)
 app.set("trust proxy", 1);
 
-// 2. DYNAMIC CORS CONFIGURATION
+// 2. ENTERPRISE SECURITY HEADERS (Helmet)
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginEmbedderPolicy: false,
+  })
+);
+
+// 3. DYNAMIC CORS CONFIGURATION
 app.use(
   cors({
     origin: function (origin, callback) {
@@ -34,7 +44,10 @@ app.use(
   })
 );
 
-// 3. BODY PARSERS & COOKIES
+// 4. HTTP RESPONSE PAYLOAD COMPRESSION (Gzip/Brotli)
+app.use(compression());
+
+// 5. BODY PARSERS & COOKIES
 app.use(cookieParser());
 app.use(express.json({ limit: "5mb" }));
 app.use(express.urlencoded({ extended: true, limit: "5mb" }));

@@ -28,6 +28,11 @@ const uploadPdf=(field='file')=>(req, res, next)=>{
         if (!req.file) {
             return next(ApiError.badRequest('No file uploaded'));
         }
+        // Strict Magic Number Header Check: Verify buffer begins with '%PDF-'
+        const buffer = req.file.buffer;
+        if (!buffer || buffer.length < 5 || buffer.toString('utf-8', 0, 5) !== '%PDF-') {
+            return next(ApiError.badRequest('Uploaded file is corrupted or not a valid PDF document'));
+        }
         next();
     });
 }
