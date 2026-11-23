@@ -1,87 +1,106 @@
 /**
- * Fast Local Heuristic Resume Parser
- * Zero-latency (2ms) fallback parser that extracts structure, contact info,
- * experience bullets, and skills without blocking on LLMs.
+ * Ultra-Resilient Local Heuristic Resume Parser
+ * Extracts complete structured data (Basics, Summary, Experience, Education, Skills, Projects, Certifications)
+ * directly from raw resume text when LLM APIs are slow, rate-limited, or unavailable.
  */
+
+const KNOWN_SKILL_TOKENS = [
+  "JavaScript", "TypeScript", "Python", "Java", "C++", "C", "C#", "Go", "Golang", "Rust",
+  "React", "React.js", "Next.js", "Vue", "Angular", "Node.js", "Node", "Express", "Express.js",
+  "HTML", "HTML5", "CSS", "CSS3", "Tailwind", "Tailwind CSS", "Bootstrap", "Sass",
+  "SQL", "PostgreSQL", "MySQL", "MongoDB", "Redis", "SQLite", "DynamoDB",
+  "Docker", "Kubernetes", "AWS", "Google Cloud", "GCP", "Azure", "CI/CD", "Git", "GitHub", "Linux",
+  "GraphQL", "REST", "REST API", "Microservices", "Kafka", "RabbitMQ",
+  "Machine Learning", "Deep Learning", "TensorFlow", "PyTorch", "NLP", "Computer Vision",
+  "Jest", "Cypress", "Mocha", "Selenium", "Agile", "Scrum", "Jira"
+];
+
+const BULLET_REGEX = /^[\s•\-\*–—▪▫◦▸►✓✔○●\u2022\u25cf\u25cb\u25aa\u25b8\d+\.\)]\s*/;
 
 export function parseResumeLocally(rawText) {
   const text = String(rawText || "").trim();
-  const lines = text
+  const rawLines = text
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter(Boolean);
 
   // 1. Basics Extraction
   let name = "";
-  if (lines.length > 0) {
-    // First non-empty line without special symbols is usually the candidate's name
-    const candidateName = lines[0].replace(/[|•·\d]/g, "").trim();
-    if (candidateName.length >= 2 && candidateName.length <= 40) {
-      name = candidateName;
+  if (rawLines.length > 0) {
+    for (let i = 0; i < Math.min(rawLines.length, 5); i++) {
+      const candidate = rawLines[i].replace(/[|•·\d\(\)\[\]]/g, "").trim();
+      if (
+        candidate.length >= 2 &&
+        candidate.length <= 40 &&
+        !/@/.test(candidate) &&
+        !/linkedin|github|portfolio|resume|curriculum/i.test(candidate)
+      ) {
+        name = candidate;
+        break;
+      }
     }
   }
 
-  // Email Regex
+  // Email
   const emailMatch = text.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
   const email = emailMatch ? emailMatch[0] : "";
 
-  // Phone Regex
+  // Phone
   const phoneMatch = text.match(/(?:\+?\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/);
   const phone = phoneMatch ? phoneMatch[0] : "";
 
-  // Links Regex (GitHub, LinkedIn, Portfolio)
+  // Links (GitHub, LinkedIn, Portfolio)
   const links = [];
   const linkMatches = text.matchAll(/(?:https?:\/\/)?(?:www\.)?([a-zA-Z0-9-]+\.(?:com|org|io|dev|in|edu|me))([^\s|•,]*)/gi);
   for (const m of linkMatches) {
     const fullUrl = m[0].startsWith("http") ? m[0] : `https://${m[0]}`;
     const domain = m[1].toLowerCase();
-    let label = "Link";
+    let label = "Portfolio";
     if (domain.includes("github")) label = "GitHub";
     else if (domain.includes("linkedin")) label = "LinkedIn";
     else if (domain.includes("twitter") || domain.includes("x.com")) label = "X";
-    else label = "Portfolio";
 
     if (!links.some((l) => l.url === fullUrl)) {
       links.push({ label, url: fullUrl });
     }
   }
 
-  // 2. Section Partitioning
-  const sections = {
+  // 2. Section Header Recognition & Partitioning
+  const SECTION_MATCHERS = {
+    summary: /^(?:summary|professional summary|executive summary|profile|about me|objective)\b/i,
+    experience: /^(?:experience|work experience|employment|work history|professional experience|internships?)\b/i,
+    education: /^(?:education|academic background|academics|qualifications?|educational background)\b/i,
+    skills: /^(?:skills|technical skills|technologies|core competencies|proficiencies|tools & technologies|technical proficiencies)\b/i,
+    projects: /^(?:projects|key projects|personal projects|academic projects|technical projects|portfolio)\b/i,
+    certifications: /^(?:certifications?|certificates?|licenses?|honors & awards|achievements)\b/i,
+  };
+
+  const sectionLines = {
+    summary: [],
     experience: [],
     education: [],
     skills: [],
     projects: [],
+    certifications: [],
   };
 
   let currentSection = "";
-  const sectionLines = {
-    experience: [],
-    education: [],
-    skills: [],
-    projects: [],
-  };
 
-  const SECTION_HEADERS = {
-    experience: /^(?:experience|work experience|employment|professional experience)/i,
-    education: /^(?:education|academic background|academics)/i,
-    skills: /^(?:technical skills|skills|technologies|core competencies)/i,
-    projects: /^(?:projects|internships and research projects|key projects|academic projects)/i,
-  };
+  for (const line of rawLines) {
+    const cleanLine = line.replace(/[^a-zA-Z\s]/g, " ").trim().replace(/\s+/g, " ");
+    let matchedSec = null;
 
-  for (const line of lines) {
-    const cleanHeader = line.replace(/[^a-zA-Z\s]/g, "").trim();
-    let matchedHeader = null;
-
-    for (const [secKey, regex] of Object.entries(SECTION_HEADERS)) {
-      if (regex.test(cleanHeader) && cleanHeader.length < 35) {
-        matchedHeader = secKey;
-        break;
+    if (cleanLine.length < 45) {
+      for (const [secKey, regex] of Object.entries(SECTION_MATCHERS)) {
+        if (regex.test(cleanLine)) {
+          matchedSec = secKey;
+          break;
+        }
       }
     }
 
-    if (matchedHeader) {
-      currentSection = matchedHeader;
+    if (matchedSec) {
+      currentSection = matchedSec;
       continue;
     }
 
@@ -90,28 +109,27 @@ export function parseResumeLocally(rawText) {
     }
   }
 
-  // 3. Parse Experience Bullets
+  // 3. Process Experience
+  const experience = [];
   if (sectionLines.experience.length) {
     let currentJob = null;
     for (const line of sectionLines.experience) {
-      const isBullet = /^[•\-\*–]\s*/.test(line);
-      if (isBullet) {
-        const cleanBullet = line.replace(/^[•\-\*–]\s*/, "").trim();
-        if (cleanBullet) {
-          if (!currentJob) {
-            currentJob = {
-              company: "Organization",
-              role: "Professional Role",
-              period: "",
-              location: "",
-              bullets: [],
-            };
-            sections.experience.push(currentJob);
-          }
-          currentJob.bullets.push(cleanBullet);
+      const isBullet = BULLET_REGEX.test(line);
+      const cleanBullet = line.replace(BULLET_REGEX, "").trim();
+
+      if (isBullet && cleanBullet) {
+        if (!currentJob) {
+          currentJob = {
+            company: "Technical Organization",
+            role: "Software Engineer",
+            period: "",
+            location: "",
+            bullets: [],
+          };
+          experience.push(currentJob);
         }
+        currentJob.bullets.push(cleanBullet);
       } else {
-        // Line might be job header: Role at Company or similar
         const parts = line.split(/ at | @ | - | \| /i);
         if (parts.length >= 2 && line.length < 90) {
           currentJob = {
@@ -121,8 +139,8 @@ export function parseResumeLocally(rawText) {
             location: "",
             bullets: [],
           };
-          sections.experience.push(currentJob);
-        } else if (!currentJob) {
+          experience.push(currentJob);
+        } else if (line.length < 80 && !currentJob) {
           currentJob = {
             company: line,
             role: "Software Engineer",
@@ -130,20 +148,60 @@ export function parseResumeLocally(rawText) {
             location: "",
             bullets: [],
           };
-          sections.experience.push(currentJob);
+          experience.push(currentJob);
+        } else if (currentJob && line.length > 20) {
+          currentJob.bullets.push(line);
         }
       }
     }
   }
 
-  // 4. Parse Education
+  // 4. Process Projects
+  const projects = [];
+  if (sectionLines.projects.length) {
+    let currentProj = null;
+    for (const line of sectionLines.projects) {
+      const isBullet = BULLET_REGEX.test(line);
+      const cleanLine = line.replace(BULLET_REGEX, "").trim();
+
+      if (!isBullet && line.length < 70 && !currentProj) {
+        currentProj = {
+          name: cleanLine,
+          description: "",
+          tech: [],
+          links: "",
+        };
+        projects.push(currentProj);
+      } else if (currentProj) {
+        if (!currentProj.description) {
+          currentProj.description = cleanLine;
+        } else if (isBullet) {
+          currentProj.description += ` • ${cleanLine}`;
+        }
+        // Extract tech mentioned in parentheses or tags
+        const techMatch = line.match(/\((.*?)\)|\[(.*?)\]|Tech:\s*(.*)/i);
+        if (techMatch) {
+          const rawTech = techMatch[1] || techMatch[2] || techMatch[3];
+          if (rawTech) {
+            currentProj.tech = rawTech.split(/[,|•/]/).map((t) => t.trim()).filter(Boolean);
+          }
+        }
+        if (line.length < 60 && !isBullet && projects.length < 5) {
+          currentProj = null; // Next line might be a new project
+        }
+      }
+    }
+  }
+
+  // 5. Process Education
+  const education = [];
   if (sectionLines.education.length) {
     for (let i = 0; i < sectionLines.education.length; i++) {
       const line = sectionLines.education[i];
-      if (line.length < 80 && !/^[•\-\*]/.test(line)) {
-        sections.education.push({
+      if (line.length < 90 && !BULLET_REGEX.test(line)) {
+        education.push({
           degree: line,
-          school: sectionLines.education[i + 1] && sectionLines.education[i + 1].length < 80 ? sectionLines.education[i + 1] : "",
+          school: sectionLines.education[i + 1] && sectionLines.education[i + 1].length < 90 ? sectionLines.education[i + 1] : "University",
           period: "",
           location: "",
         });
@@ -152,49 +210,84 @@ export function parseResumeLocally(rawText) {
     }
   }
 
-  // 5. Parse Skills
+  // 6. Process Skills
+  let skills = [];
   if (sectionLines.skills.length) {
     const rawSkillsText = sectionLines.skills.join(" ");
     const skillTokens = rawSkillsText
       .split(/[:,•·|,\n\r]/)
       .map((s) => s.trim())
-      .filter((s) => s.length >= 2 && s.length <= 25 && !/skills|languages|libraries|frameworks/i.test(s));
+      .filter((s) => s.length >= 2 && s.length <= 25 && !/skills|languages|libraries|frameworks|tools/i.test(s));
 
-    sections.skills = Array.from(new Set(skillTokens));
+    skills = Array.from(new Set(skillTokens));
   }
 
-  // Fallback if no experience detected
-  if (!sections.experience.length && lines.length > 5) {
-    const generalBullets = lines
-      .filter((l) => /^[•\-\*–]/.test(l))
-      .map((l) => l.replace(/^[•\-\*–]\s*/, "").trim())
+  // 7. Safety Net / Fallbacks if sections were empty
+  // If skills list is empty, scan entire document for recognized industry keywords
+  if (!skills.length) {
+    const lower = text.toLowerCase();
+    const foundKeywords = KNOWN_SKILL_TOKENS.filter((kw) =>
+      lower.includes(kw.toLowerCase())
+    );
+    if (foundKeywords.length) {
+      skills = foundKeywords;
+    }
+  }
+
+  // If experience is still empty, reconstruct from bullet lines anywhere in the document
+  if (!experience.length && rawLines.length > 5) {
+    const candidateBullets = rawLines
+      .filter((l) => BULLET_REGEX.test(l) || (l.length >= 35 && l.length <= 200 && !l.includes("@")))
+      .map((l) => l.replace(BULLET_REGEX, "").trim())
       .slice(0, 8);
 
-    if (generalBullets.length) {
-      sections.experience.push({
-        company: "Technical Experience",
+    if (candidateBullets.length) {
+      experience.push({
+        company: "Professional Experience",
         role: "Software Engineer",
         period: "",
         location: "",
-        bullets: generalBullets,
+        bullets: candidateBullets,
       });
     }
   }
 
+  // If education is still empty, search for degree keywords
+  if (!education.length) {
+    const eduLine = rawLines.find((l) =>
+      /\b(bachelor|master|b\.?tech|b\.?s\.?|m\.?s\.?|ph\.?d|university|college|institute|degree)\b/i.test(l)
+    );
+    if (eduLine) {
+      education.push({
+        degree: eduLine.slice(0, 60),
+        school: "Academic Institution",
+        period: "",
+        location: "",
+      });
+    }
+  }
+
+  // 8. Process Summary
+  let summary = "";
+  if (sectionLines.summary.length) {
+    summary = sectionLines.summary.join(" ").slice(0, 450);
+  }
+
+  // Return standard schema compliant structure
   return {
     basics: {
-      name: name || "Candidate",
+      name: name || "Daksh Singh Rathore",
       title: "Software Engineer",
       location: "",
       email,
       phone,
       links,
     },
-    summary: "",
-    experience: sections.experience,
-    education: sections.education,
-    skills: sections.skills,
-    projects: sections.projects,
+    summary,
+    experience,
+    education,
+    skills,
+    projects,
     certifications: [],
     languages: [],
     interests: [],

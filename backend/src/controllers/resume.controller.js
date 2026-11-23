@@ -11,6 +11,7 @@ import ApiError from "../utils/ApiError.js";
 
 import { extractTextFromPdf } from "../services/pdfService.js";
 import { parseResume } from "../services/structuredParser.js";
+import { parseResumeLocally } from "../services/fastLocalParser.js";
 import { analyzeResume } from "../services/geminiService.js";
 import { diffText, summarize } from "../services/diffService.js";
 
@@ -174,8 +175,18 @@ export const getResumeById = asyncHandler(async (req, res) => {
   const resume = await loadOwnResume(req);
   const versions = await ResumeVersion.find({ resumeId: resume._id })
     .sort({ versionNumber: 1 })
-    .select("-rawText")
     .lean();
+
+  // Self-heal: If any versions were uploaded when parser returned empty sections, reconstruct now
+  for (const v of versions) {
+    const p = v.parsedSections || {};
+    if ((!p.experience?.length || !p.skills?.length) && v.rawText) {
+      const repaired = parseResumeLocally(v.rawText);
+      v.parsedSections = repaired;
+      ResumeVersion.updateOne({ _id: v._id }, { $set: { parsedSections: repaired } }).exec();
+    }
+    delete v.rawText;
+  }
 
   res.json({ resume, versions });
 });
@@ -187,6 +198,14 @@ export const getResumeById = asyncHandler(async (req, res) => {
 export const getResumeVersion = asyncHandler(async (req, res) => {
   const resume = await loadOwnResume(req);
   const version = await loadVersion(resume._id, req.params.versionId);
+
+  // Self-heal version if parsed sections are empty
+  const p = version.parsedSections || {};
+  if ((!p.experience?.length || !p.skills?.length) && version.rawText) {
+    version.parsedSections = parseResumeLocally(version.rawText);
+    await version.save();
+  }
+
   res.json({ version });
 });
 
@@ -266,6 +285,12 @@ export const analyzeResumeVersion = asyncHandler(async (req, res) => {
     promptTokens,
     responseTokens,
   });
+
+  // Ensure parsed sections are hydrated if originally saved empty
+  const p = version.parsedSections || {};
+  if ((!p.experience?.length || !p.skills?.length) && version.rawText) {
+    version.parsedSections = parseResumeLocally(version.rawText);
+  }
 
   version.latestAnalysisId = saved._id;
   await version.save();

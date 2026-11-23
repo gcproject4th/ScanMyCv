@@ -368,6 +368,12 @@ function ParsedSectionsPreview({ version }) {
         </div>
       )}
 
+      {!s.experience?.length && !s.education?.length && !s.skills?.length && !s.projects?.length && !s.summary && (
+        <div className="py-6 text-center text-xs text-[var(--ink-muted)]">
+          No structured sections extracted yet. Click <span className="font-semibold text-[var(--ink)]">Analyze</span> above to evaluate and structure this resume.
+        </div>
+      )}
+
       {s.summary && (
         <div>
           <PreviewLabel>Summary</PreviewLabel>

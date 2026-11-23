@@ -448,6 +448,12 @@ function PaperPreview({ version, user, title }) {
           </div>
         </div>
       )}
+
+      {!p.summary && !p.experience?.length && !p.projects?.length && !p.education?.length && !p.skills?.length && (
+        <div className="py-12 text-center text-xs text-[#5C6470] italic">
+          No structured sections found in this version. Run an AI analysis on the resume page to populate this export template.
+        </div>
+      )}
     </div>
   );
 }
