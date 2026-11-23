@@ -5,7 +5,8 @@ import { UploadCloud, FileText, X, Loader2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { useUploadResume, useCreateSampleResume } from "@/hooks/useResumes";
+import { useCreateSampleResume } from "@/hooks/useResumes";
+import { useUploadManager } from "@/context/UploadContext";
 
 const MAX_BYTES = 5 * 1024 * 1024;
 
@@ -19,14 +20,15 @@ export function UploadDropzone({ onUploaded, compact = false }) {
   const [file, setFile] = useState(null);
   const [title, setTitle] = useState("");
   const [err, setErr] = useState("");
-  const upload = useUploadResume();
   const createSample = useCreateSampleResume();
+  const { isUploading, uploadFileName, progressStage, startUpload } = useUploadManager();
 
   const { getRootProps, getInputProps, isDragActive, isDragReject } = useDropzone({
     accept: { "application/pdf": [".pdf"] },
     maxFiles: 1,
     maxSize: MAX_BYTES,
     multiple: false,
+    disabled: isUploading,
     onDropAccepted: (files) => {
       setErr("");
       setFile(files[0]);
@@ -42,12 +44,12 @@ export function UploadDropzone({ onUploaded, compact = false }) {
     if (!file) return;
     setErr("");
     try {
-      const data = await upload.mutateAsync({ file, title });
+      const data = await startUpload({ file, title });
       setFile(null);
       setTitle("");
       onUploaded?.(data.resume);
     } catch (e) {
-      setErr(e.message || "Upload failed");
+      setErr(e?.message || "Upload failed");
     }
   }
 
@@ -57,9 +59,11 @@ export function UploadDropzone({ onUploaded, compact = false }) {
     setErr("");
   }
 
+  const hasActiveFile = Boolean(file || isUploading);
+
   return (
     <div className="space-y-3">
-      {!file && (
+      {!hasActiveFile && (
         <>
           <div
             {...getRootProps()}
@@ -129,43 +133,47 @@ export function UploadDropzone({ onUploaded, compact = false }) {
         </>
       )}
 
-      {file && (
+      {hasActiveFile && (
         <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface)] p-4 flex items-center gap-3">
           <div className="h-10 w-10 rounded-xl bg-[var(--accent-soft)] flex items-center justify-center text-[var(--accent-strong)] shrink-0">
             <FileText size={16} />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium truncate">{file.name}</div>
-            <div className="text-xs text-[var(--ink-muted)]">{formatBytes(file.size)}</div>
+            <div className="text-sm font-medium truncate">{file ? file.name : uploadFileName}</div>
+            <div className="text-xs text-[var(--ink-muted)] truncate">
+              {isUploading ? (progressStage || "Parsing in background...") : formatBytes(file?.size || 0)}
+            </div>
           </div>
-          <button
-            onClick={reset}
-            className="h-8 w-8 rounded-full hover:bg-[var(--surface-2)] flex items-center justify-center text-[var(--ink-muted)] cursor-pointer"
-            disabled={upload.isPending}
-          >
-            <X size={14} />
-          </button>
+          {!isUploading && (
+            <button
+              onClick={reset}
+              className="h-8 w-8 rounded-full hover:bg-[var(--surface-2)] flex items-center justify-center text-[var(--ink-muted)] cursor-pointer"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
       )}
 
-      {file && (
+      {hasActiveFile && (
         <div className="space-y-3">
           <Input
             placeholder="Resume title (optional)"
-            value={title}
+            value={isUploading ? (title || (uploadFileName ? uploadFileName.replace(/\.pdf$/i, "") : "")) : title}
             onChange={(e) => setTitle(e.target.value)}
+            disabled={isUploading}
           />
           <Button
             onClick={submit}
             variant="accent"
             size="lg"
-            disabled={upload.isPending}
+            disabled={isUploading || (!file && !isUploading)}
             className="w-full"
           >
-            {upload.isPending ? (
+            {isUploading ? (
               <>
                 <Loader2 size={14} className="animate-spin" />
-                Parsing…
+                {progressStage || "Parsing..."}
               </>
             ) : (
               "Upload & parse"

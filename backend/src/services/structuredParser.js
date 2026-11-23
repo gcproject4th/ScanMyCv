@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { ENV } from "../config/ENV.js";
 import { z } from "zod";
+import { parseResumeLocally } from "./fastLocalParser.js";
 
 const ai = ENV.geminiApi ? new GoogleGenAI({ apiKey: ENV.geminiApi }) : null;
 
@@ -222,23 +223,38 @@ const emptyResumeData = {
     interests: [],
 };
 
-const PARSER_MODELS = [
-    ENV.geminiModel,
-    "gemini-2.0-flash",
-    "gemini-1.5-flash",
-];
+const PARSER_MODELS = Array.from(
+    new Set(["gemini-2.0-flash", ENV.geminiModel, "gemini-1.5-flash"].filter(Boolean))
+);
+
+async function callWithTimeout(promise, ms = 10000) {
+    let timer;
+    const timeoutPromise = new Promise((_, reject) => {
+        timer = setTimeout(() => reject(new Error(`Timeout after ${ms}ms`)), ms);
+    });
+    try {
+        return await Promise.race([promise, timeoutPromise]);
+    } finally {
+        clearTimeout(timer);
+    }
+}
 
 async function parseResume(rawText) {
-    if (!ai || !rawText || !String(rawText).trim()) {
+    if (!rawText || !String(rawText).trim()) {
         return emptyResumeData;
+    }
+
+    // If AI client is unavailable, immediately use zero-latency local heuristic parser
+    if (!ai) {
+        return validator.parse(parseResumeLocally(rawText));
     }
 
     const prompt = buildPrompt(rawText);
 
-    // Loop through the 3 models sequentially if one fails
+    // Try fast AI parsing with strict 10s timeout per attempt
     for (const modelName of PARSER_MODELS) {
         try {
-            const response = await ai.models.generateContent({
+            const aiCall = ai.models.generateContent({
                 model: modelName,
                 contents: [{ role: "user", parts: [{ text: prompt }] }],
                 config: {
@@ -247,18 +263,20 @@ async function parseResume(rawText) {
                 },
             });
 
+            const response = await callWithTimeout(aiCall, 10000);
             const text = typeof response?.text === "function" ? response.text() : response?.text;
             if (!text) continue;
 
             const parsed = JSON.parse(text);
             return validator.parse(parsed);
         } catch (error) {
-            console.warn(`[Parser Warning]: Model ${modelName} failed, trying next fallback...`, error.message);
+            console.warn(`[Parser Warning]: Model ${modelName} failed or timed out (${error.message}), trying next fallback...`);
         }
     }
 
-    console.error("[Parser Error]: All 3 models failed to parse the resume.");
-    return emptyResumeData;
+    // Graceful zero-latency fallback: Extract layout and sections locally so upload NEVER fails or times out
+    console.info("[Parser Notice]: Falling back to fast local parser to avoid user upload delay.");
+    return validator.parse(parseResumeLocally(rawText));
 }
 
 export {parseResume};
