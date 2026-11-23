@@ -27,13 +27,15 @@ apiClient.interceptors.response.use(
   (res) => res,
   (err) => {
     const message =
+      err.response?.data?.message ||
       err.response?.data?.error?.message ||
+      (typeof err.response?.data === "string" ? err.response.data : null) ||
       err.message ||
       "Request failed";
     return Promise.reject({
       status: err.response?.status,
       message,
-      details: err.response?.data?.error?.details,
+      details: err.response?.data?.details || err.response?.data?.error?.details,
       original: err,
     });
   }
