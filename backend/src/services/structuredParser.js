@@ -223,9 +223,9 @@ const emptyResumeData = {
 };
 
 const PARSER_MODELS = [
-    ENV.geminiModel ,
-    "gemini-3.5-flash-lite",
-    "gemini-3.6-flash",
+    ENV.geminiModel,
+    "gemini-2.0-flash",
+    "gemini-1.5-flash",
 ];
 
 async function parseResume(rawText) {

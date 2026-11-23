@@ -175,7 +175,7 @@ async function callGemini(prompt, modelName) {
 }
 
 const PARSER_MODELS = Array.from(
-  new Set([ENV.geminiModel, "gemini-3.6-flash", "gemini-3.5-flash-lite"].filter(Boolean))
+  new Set([ENV.geminiModel, "gemini-2.0-flash", "gemini-1.5-flash"].filter(Boolean))
 );
 
 async function analyzeResume({ rawText, targetRole }) {
