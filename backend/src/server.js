@@ -4,7 +4,11 @@ import cookieParser from "cookie-parser";
 import morgan from "morgan";
 import compression from "compression";
 import helmet from "helmet";
+import { initBackendSentry } from "./config/sentry.js";
 import healthRouter from "./routes/health.js";
+
+// Initialize Sentry error telemetry if SENTRY_DSN is present
+initBackendSentry();
 import connectDB from "./config/dpconfig.js";
 import { errorHandler, notFound } from "./middleware/errorHandle.js";
 import { ENV } from "./config/ENV.js";

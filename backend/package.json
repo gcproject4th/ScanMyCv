@@ -17,6 +17,7 @@
   "type": "module",
   "dependencies": {
     "@google/genai": "^2.18.0",
+    "@sentry/node": "^11.16.0",
     "bcrypt": "^6.0.0",
     "compression": "^1.8.2",
     "cookie-parser": "^1.4.7",
