@@ -35,7 +35,7 @@ const ENV = {
   clientUrl: primaryClientUrl,
   apiUrl,
   geminiApi: process.env.GEMINI_API_KEY,
-  geminiModel: process.env.GEMINI_MODEL || "gemini-2.0-flash",
+  geminiModel: process.env.GEMINI_MODEL || "gemini-1.5-flash",
   isProd,
   // Google OAuth
   googleClientId: process.env.GOOGLE_CLIENT_ID || "",

@@ -224,10 +224,10 @@ const emptyResumeData = {
 };
 
 const PARSER_MODELS = Array.from(
-    new Set(["gemini-2.0-flash", ENV.geminiModel, "gemini-1.5-flash"].filter(Boolean))
+    new Set([ENV.geminiModel, "gemini-1.5-flash", "gemini-1.5-flash-8b", "gemini-2.0-flash"].filter(Boolean))
 );
 
-async function callWithTimeout(promise, ms = 10000) {
+async function callWithTimeout(promise, ms = 15000) {
     let timer;
     const timeoutPromise = new Promise((_, reject) => {
         timer = setTimeout(() => reject(new Error(`Timeout after ${ms}ms`)), ms);
