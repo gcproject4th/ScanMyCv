@@ -9,7 +9,8 @@
   "scripts": {
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
-    "seed": "node scripts/seed.js"
+    "seed": "node scripts/seed.js",
+    "test": "node --import ./tests/setup.js --test tests/*.test.js"
   },
   "keywords": [],
   "author": "",

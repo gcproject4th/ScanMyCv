@@ -158,6 +158,12 @@ export function parseResumeLocally(rawText) {
 
   // 4. Process Projects
   const projects = [];
+  const extractTechTags = (str) => {
+    const m = str.match(/\((.*?)\)|\[(.*?)\]|Tech:\s*(.*)/i);
+    const raw = m && (m[1] || m[2] || m[3]);
+    return raw ? raw.split(/[,|•/]/).map((t) => t.trim()).filter(Boolean) : [];
+  };
+
   if (sectionLines.projects.length) {
     let currentProj = null;
     for (const line of sectionLines.projects) {
@@ -168,7 +174,7 @@ export function parseResumeLocally(rawText) {
         currentProj = {
           name: cleanLine,
           description: "",
-          tech: [],
+          tech: extractTechTags(cleanLine),
           links: "",
         };
         projects.push(currentProj);
@@ -178,13 +184,9 @@ export function parseResumeLocally(rawText) {
         } else if (isBullet) {
           currentProj.description += ` • ${cleanLine}`;
         }
-        // Extract tech mentioned in parentheses or tags
-        const techMatch = line.match(/\((.*?)\)|\[(.*?)\]|Tech:\s*(.*)/i);
-        if (techMatch) {
-          const rawTech = techMatch[1] || techMatch[2] || techMatch[3];
-          if (rawTech) {
-            currentProj.tech = rawTech.split(/[,|•/]/).map((t) => t.trim()).filter(Boolean);
-          }
+        if (!currentProj.tech.length) {
+          const parsedTech = extractTechTags(line);
+          if (parsedTech.length) currentProj.tech = parsedTech;
         }
         if (line.length < 60 && !isBullet && projects.length < 5) {
           currentProj = null; // Next line might be a new project

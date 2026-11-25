@@ -66,8 +66,14 @@ jobs:
           node --check src/services/structuredParser.js
           node --check src/services/fastLocalParser.js
           node --check src/services/geminiService.js
+          node --check src/services/localHeuristicAnalyzer.js
           node --check src/controllers/resume.controller.js
           node --check src/controllers/auth.controller.js
+
+      - name: Run Backend Unit Tests
+        run: |
+          cd backend
+          npm test
 
   secret-leak-audit:
     name: Secret & Credential Audit
