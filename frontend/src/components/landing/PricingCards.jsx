@@ -62,11 +62,14 @@ export const PricingCards = () => {
   const { user } = useAuth();
 
   return (
-    <div className="w-full max-w-6xl mx-auto px-4 py-12" id="pricing">
+    <section
+      className="w-full max-w-6xl mx-auto px-4 mt-28 sm:mt-36 scroll-mt-28"
+      id="pricing"
+    >
       {/* Header Section */}
       <div className="text-center max-w-2xl mx-auto mb-12">
         <span
-          className="text-xs font-semibold uppercase tracking-wider px-3 py-1 rounded-full border"
+          className="inline-block text-xs font-semibold uppercase tracking-wider px-3 py-1 rounded-full border"
           style={{
             backgroundColor: "var(--accent-soft)",
             borderColor: "var(--border)",
@@ -216,7 +219,7 @@ export const PricingCards = () => {
           );
         })}
       </div>
-    </div>
+    </section>
   );
 };
 

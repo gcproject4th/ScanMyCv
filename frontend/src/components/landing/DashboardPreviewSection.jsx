@@ -18,7 +18,7 @@ export function DashboardPreviewSection() {
   return (
     <section
       id="dashboard-preview"
-      className="px-3 sm:px-6 mt-28 sm:mt-36"
+      className="px-3 sm:px-6 mt-28 sm:mt-36 scroll-mt-28"
       style={{ maxWidth: 1240, marginLeft: "auto", marginRight: "auto" }}
     >
       <SectionHeader

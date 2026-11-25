@@ -177,7 +177,7 @@ export function HowItWorks() {
   return (
     <section
       id="how-it-works"
-      className="relative px-3 sm:px-6 mt-28 sm:mt-36"
+      className="relative px-3 sm:px-6 mt-28 sm:mt-36 scroll-mt-28"
       style={{ maxWidth: 1240, marginLeft: "auto", marginRight: "auto" }}
     >
       <SectionHeader

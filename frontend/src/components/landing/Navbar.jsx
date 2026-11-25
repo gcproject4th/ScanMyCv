@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, ArrowRight, Sun, Moon, User } from "lucide-react";
@@ -15,17 +15,84 @@ const NAV_LINKS = [
   { label: "Pricing", href: "#pricing" },
 ];
 
+// Breathing gap beneath the collapsed floating header pill so section eyebrows & headlines sit in clear air
+const HEADER_CLEARANCE_GAP = 28;
+const DEFAULT_HEADER_OFFSET = 112;
+
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const [activeHref, setActiveHref] = useState("");
+  const barRef = useRef(null);
+  const navLockRef = useRef({ href: "", until: 0 });
   const { theme, toggle } = useTheme();
   const { user, loading } = useAuth(); // Auth context integrated
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 8);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    const updateScrollState = () => {
+      const y = window.scrollY;
+      setScrolled(y > 8);
+
+      // Avoid intermediate section flicker while programmatic smooth-scroll is animating
+      if (Date.now() < navLockRef.current.until) {
+        return;
+      }
+
+      // Scrollspy: highlight whichever landmark section sits at the reading focal line
+      const focalOffset = (barRef.current?.getBoundingClientRect().bottom || 82) + 80;
+      let current = "";
+      for (const item of NAV_LINKS) {
+        const target = document.getElementById(item.href.slice(1));
+        if (!target) continue;
+        if (target.getBoundingClientRect().top <= focalOffset) {
+          current = item.href;
+        }
+      }
+      setActiveHref(current);
+    };
+
+    const handleScrollEnd = () => {
+      if (navLockRef.current.until) {
+        navLockRef.current.until = 0;
+        updateScrollState();
+      }
+    };
+
+    updateScrollState();
+    window.addEventListener("scroll", updateScrollState, { passive: true });
+    window.addEventListener("scrollend", handleScrollEnd, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", updateScrollState);
+      window.removeEventListener("scrollend", handleScrollEnd);
+    };
+  }, []);
+
+  const handleAnchorClick = useCallback((e, href) => {
+    const id = href.slice(1);
+    const target = document.getElementById(id);
+    if (!target) return;
+
+    e.preventDefault();
+    setOpen(false);
+    navLockRef.current = { href, until: Date.now() + 950 };
+    setActiveHref(href);
+
+    // Measure the collapsed top bar row dynamically so mobile drawer collapse never skews landing position
+    const barBottom = barRef.current?.getBoundingClientRect().bottom;
+    const clearance = barBottom ? Math.round(barBottom + HEADER_CLEARANCE_GAP) : DEFAULT_HEADER_OFFSET;
+    const targetTop = target.getBoundingClientRect().top + window.scrollY - clearance;
+    const prefersReducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    window.scrollTo({
+      top: Math.max(0, targetTop),
+      behavior: prefersReducedMotion ? "auto" : "smooth",
+    });
+
+    if (window.location.hash !== href) {
+      window.history.pushState(null, "", href);
+    }
   }, []);
 
   useEffect(() => {
@@ -76,7 +143,7 @@ export function Navbar() {
             : "bg-black/20 border-white/10 backdrop-blur-md"
         )}
       >
-        <div className="flex items-center justify-between gap-3 px-3.5 sm:px-5 py-2.5">
+        <div ref={barRef} className="flex items-center justify-between gap-3 px-3.5 sm:px-5 py-2.5">
           {/* Left: Brand Logo */}
           <Link to="/" title="ScanMyCV Home" className="flex items-center gap-2.5 shrink-0 cursor-pointer">
             <div className="flex items-center justify-center shrink-0">
@@ -93,21 +160,30 @@ export function Navbar() {
           </Link>
 
           {/* Center: Navigation Links (Visible > 925px) */}
-          <nav className="hidden [@media(min-width:926px)]:flex items-center gap-1">
-            {NAV_LINKS.map((l) => (
-              <a
-                key={l.href}
-                href={l.href}
-                className={cn(
-                  "px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors",
-                  isOverHero
-                    ? "text-white/80 hover:text-white hover:bg-white/10"
-                    : "text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)]"
-                )}
-              >
-                {l.label}
-              </a>
-            ))}
+          <nav aria-label="Primary navigation" className="hidden [@media(min-width:926px)]:flex items-center gap-1">
+            {NAV_LINKS.map((l) => {
+              const isActive = activeHref === l.href;
+              return (
+                <a
+                  key={l.href}
+                  href={l.href}
+                  onClick={(e) => handleAnchorClick(e, l.href)}
+                  aria-current={isActive ? "location" : undefined}
+                  className={cn(
+                    "px-3.5 py-1.5 rounded-full text-[13px] font-medium transition-colors",
+                    isOverHero
+                      ? isActive
+                        ? "text-white bg-white/15"
+                        : "text-white/80 hover:text-white hover:bg-white/10"
+                      : isActive
+                        ? "text-[var(--ink)] bg-[var(--surface-2)] font-semibold shadow-[inset_0_0_0_1px_var(--border)]"
+                        : "text-[var(--ink-muted)] hover:text-[var(--ink)] hover:bg-[var(--surface-2)]"
+                  )}
+                >
+                  {l.label}
+                </a>
+              );
+            })}
           </nav>
 
           {/* Right: Actions */}
@@ -222,16 +298,25 @@ export function Navbar() {
               transition={{ duration: 0.25, ease: "easeInOut" }}
               className="[@media(min-width:926px)]:hidden border-t border-[var(--border)] px-4 py-3 space-y-1 overflow-hidden"
             >
-              {NAV_LINKS.map((l) => (
-                <a
-                  key={l.href}
-                  href={l.href}
-                  onClick={() => setOpen(false)}
-                  className="block px-3 py-2 rounded-xl text-sm font-medium text-[var(--ink)] hover:bg-[var(--surface-2)] transition-colors"
-                >
-                  {l.label}
-                </a>
-              ))}
+              {NAV_LINKS.map((l) => {
+                const isActive = activeHref === l.href;
+                return (
+                  <a
+                    key={l.href}
+                    href={l.href}
+                    onClick={(e) => handleAnchorClick(e, l.href)}
+                    aria-current={isActive ? "location" : undefined}
+                    className={cn(
+                      "block px-3 py-2 rounded-xl text-sm font-medium transition-colors",
+                      isActive
+                        ? "bg-[var(--surface-2)] text-[var(--ink)] font-semibold"
+                        : "text-[var(--ink)] hover:bg-[var(--surface-2)]"
+                    )}
+                  >
+                    {l.label}
+                  </a>
+                );
+              })}
 
               <div className="pt-2 mt-2 border-t border-[var(--border)]/60">
                 {!loading && user ? (

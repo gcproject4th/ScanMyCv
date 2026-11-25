@@ -67,7 +67,7 @@ export function FeaturesSection() {
   return (
     <section
       id="features"
-      className="relative px-3 sm:px-6 mt-18 sm:mt-36"
+      className="relative px-3 sm:px-6 mt-18 sm:mt-36 scroll-mt-28"
       style={{ maxWidth: 1240, marginLeft: "auto", marginRight: "auto" }}
     >
       {/* Atmospheric sage glow behind the section header */}
