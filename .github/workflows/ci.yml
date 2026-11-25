@@ -12,7 +12,7 @@ concurrency:
 
 jobs:
   frontend-build-and-lint:
-    name: Frontend (Lint & Build)
+    name: Frontend (Lint, Test & Build)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -46,7 +46,7 @@ jobs:
           npm run build
 
   backend-syntax-and-audit:
-    name: Backend (Syntax & Integrity)
+    name: Backend (Syntax, Test & Coverage)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -64,22 +64,15 @@ jobs:
           cd backend
           npm ci
 
-      - name: Verify Backend Syntax Integrity
+      - name: Verify All Backend JS Syntax
         run: |
           cd backend
-          node --check src/app.js
-          node --check src/server.js
-          node --check src/services/structuredParser.js
-          node --check src/services/fastLocalParser.js
-          node --check src/services/geminiService.js
-          node --check src/services/localHeuristicAnalyzer.js
-          node --check src/controllers/resume.controller.js
-          node --check src/controllers/auth.controller.js
+          find src -name "*.js" -print0 | xargs -0 -n1 node --check
 
-      - name: Run Backend Unit Tests
+      - name: Run Backend Tests & Coverage Report
         run: |
           cd backend
-          npm test
+          npm run test:coverage
 
   secret-leak-audit:
     name: Secret & Credential Audit
@@ -88,11 +81,40 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Scan for committed .env files
+      - name: Scan for committed .env files and leaked credentials
         run: |
           COMMITTED_ENVS=$(git ls-files | grep -E "(^|/)\.env$" || true)
           if [ -n "$COMMITTED_ENVS" ]; then
             echo "::error::Found committed .env file(s) in repository index: $COMMITTED_ENVS"
             exit 1
           fi
-          echo "Secret audit clean: No raw .env files found in git tree."
+
+          LEAKS=$(git grep -nE "(AIzaSy[0-9A-Za-z_-]{33}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----|mongodb\+srv://[^<\s]+:[^@\s]+@)" -- ':(exclude).github/workflows/ci.yml' || true)
+          if [ -n "$LEAKS" ]; then
+            echo "::error::Potential credential pattern detected in tracked files:"
+            echo "$LEAKS"
+            exit 1
+          fi
+          echo "Secret audit clean: No raw .env files or hardcoded credentials found."
+
+  ci-gate:
+    name: CI Status Gate
+    needs: [frontend-build-and-lint, backend-syntax-and-audit, secret-leak-audit]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish Pipeline Summary & Enforce Status
+        run: |
+          echo "### ScanMyCv CI Pipeline Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Check | Outcome |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| :--- | :--- |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Frontend (Lint, Vitest & Build) | ${{ needs.frontend-build-and-lint.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Backend (Syntax, Node/Supertest & Coverage) | ${{ needs.backend-syntax-and-audit.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Secret & Credential Audit | ${{ needs.secret-leak-audit.result }} |" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "${{ needs.frontend-build-and-lint.result }}" != "success" ] || \
+             [ "${{ needs.backend-syntax-and-audit.result }}" != "success" ] || \
+             [ "${{ needs.secret-leak-audit.result }}" != "success" ]; then
+            echo "::error::One or more CI checks failed."
+            exit 1
+          fi
