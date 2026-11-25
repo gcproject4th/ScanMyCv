@@ -1,77 +1,7 @@
-import express from "express";
-import cors from "cors";
-import cookieParser from "cookie-parser";
-import morgan from "morgan";
-import compression from "compression";
-import helmet from "helmet";
-import { initBackendSentry } from "./config/sentry.js";
-import healthRouter from "./routes/health.js";
-
-// Initialize Sentry error telemetry if SENTRY_DSN is present
-initBackendSentry();
+import app from "./app.js";
 import connectDB from "./config/dpconfig.js";
-import { errorHandler, notFound } from "./middleware/errorHandle.js";
 import { ENV } from "./config/ENV.js";
-import AuthRouter from "./routes/auth.router.js";
-import resumeRouter from "./routes/resumes.js";
-import dashboardRouter from "./routes/dashboard.js";
-import insightsRouter from "./routes/insights.js";
-import versionRouter from "./routes/version.js";
-import historyRouter from "./routes/history.js";
 import { startKeepAlive } from "./services/keepAliveService.js";
-
-const app = express();
-
-// 1. TRUST PROXY MUST BE FIRST (Before CORS & Cookie Parser)
-app.set("trust proxy", 1);
-
-// 2. ENTERPRISE SECURITY HEADERS (Helmet)
-app.use(
-  helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" },
-    crossOriginEmbedderPolicy: false,
-  })
-);
-
-// 3. DYNAMIC CORS CONFIGURATION
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      // Allow requests with no origin (like mobile apps, Postman, or server-to-server)
-      if (!origin || ENV.clientOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error(`CORS policy blocked access for origin: ${origin}`));
-      }
-    },
-    credentials: true, // Required for HTTP-only cross-origin cookies
-  })
-);
-
-// 4. HTTP RESPONSE PAYLOAD COMPRESSION (Gzip/Brotli)
-app.use(compression());
-
-// 5. BODY PARSERS & COOKIES
-app.use(cookieParser());
-app.use(express.json({ limit: "5mb" }));
-app.use(express.urlencoded({ extended: true, limit: "5mb" }));
-
-if (ENV.nodeEnv === "development") {
-  app.use(morgan("dev"));
-}
-
-// 4. API ROUTES
-app.use("/api/health", healthRouter);
-app.use("/api/auth", AuthRouter);
-app.use("/api/resumes", resumeRouter);
-app.use("/api/dashboard", dashboardRouter);
-app.use("/api/insights", insightsRouter);
-app.use("/api/versions", versionRouter);
-app.use("/api/history", historyRouter);
-
-// 5. ERROR HANDLING
-app.use(notFound);
-app.use(errorHandler);
 
 const PORT = ENV.port;
 
