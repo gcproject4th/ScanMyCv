@@ -35,6 +35,11 @@ jobs:
           cd frontend
           npm run lint
 
+      - name: Run Frontend Unit Tests
+        run: |
+          cd frontend
+          npm test
+
       - name: Build Frontend Bundle
         run: |
           cd frontend

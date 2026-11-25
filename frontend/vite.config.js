@@ -12,6 +12,12 @@ export default defineConfig({
       "@": path.resolve(import.meta.dirname, "./src"),
     },
   },
+  test: {
+    environment: "jsdom",
+    globals: true,
+    setupFiles: ["./src/test/setup.js"],
+    clearMocks: true,
+  },
   build: {
     target: "esnext",
     cssCodeSplit: true,
