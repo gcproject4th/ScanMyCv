@@ -3,7 +3,7 @@ import express from "express";
 import AuthMiddleware from "../middleware/auth.js";
 import validate from "../middleware/validate.js";
 import uploadPdf from "../middleware/upload.js";
-import { analyzeLimiter } from "../middleware/rateLimit.js";
+import { analyzeLimiter, uploadLimiter } from "../middleware/rateLimit.js";
 
 import {
   idParamSchema,
@@ -33,7 +33,7 @@ router.use(AuthMiddleware);
 router.post("/sample", createSampleResume);
 
 router.route("/")
-  .post(uploadPdf("file"), createResume)
+  .post(uploadLimiter, uploadPdf("file"), createResume)
   .get(getAllResumes);
 
 router.route("/:id")
@@ -74,6 +74,7 @@ router.get(
 // Rewrites & Diffing
 router.post(
   "/:id/rewrite",
+  analyzeLimiter,
   validate(idParamSchema, "params"),
   validate(rewriteBodySchema, "body"),
   applyRewrites

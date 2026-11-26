@@ -14,8 +14,8 @@ async function extractTextFromPdf(fileBuffer) {
         }
         return {
             text,
-            mata:{
-                numPages: result.pages.length ?? result.numpages ?? 0,
+            meta: {
+                numPages: result.pages?.length ?? result.numpages ?? 0,
             },
         };
     } catch (error) {

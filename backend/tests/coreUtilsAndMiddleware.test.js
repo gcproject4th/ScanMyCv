@@ -6,6 +6,8 @@ import ApiError from "../src/utils/ApiError.js";
 import { signToken, verifyToken, getCookieOptions } from "../src/utils/jwt.js";
 import validate from "../src/middleware/validate.js";
 import { errorHandler } from "../src/middleware/errorHandle.js";
+import { userOrIpKeyGenerator } from "../src/middleware/rateLimit.js";
+import { sanitizeUntrustedText } from "../src/utils/promptSafety.js";
 
 describe("diffService", () => {
   it("computes word diffs and added/removed character summary", () => {
@@ -117,5 +119,24 @@ describe("validate & errorHandler middleware", () => {
     const r3 = mockRes();
     errorHandler({ name: "ZodError", issues: [{ message: "Invalid" }] }, {}, r3, () => {});
     assert.equal(r3.out.statusCode, 400);
+  });
+
+  it("rateLimit userOrIpKeyGenerator returns user id or IP string and never returns undefined or objects", () => {
+    assert.equal(userOrIpKeyGenerator({ user: { id: "u-1" }, ip: "127.0.0.1" }), "u-1");
+    assert.equal(userOrIpKeyGenerator({ user: { _id: "u-2" }, ip: "127.0.0.1" }), "u-2");
+    const ipKey = userOrIpKeyGenerator({ ip: "127.0.0.1" });
+    assert.equal(ipKey, "127.0.0.1");
+  });
+});
+
+describe("promptSafety sanitizeUntrustedText", () => {
+  it("strips control bytes while keeping newlines and caps length at maxChars", () => {
+    const clean = sanitizeUntrustedText("Line 1\u0000\u0007\nLine 2");
+    assert.equal(clean, "Line 1\nLine 2");
+
+    const longInput = "A".repeat(250);
+    const truncated = sanitizeUntrustedText(longInput, 100);
+    assert.ok(truncated.startsWith("A".repeat(100)));
+    assert.match(truncated, /truncated at 100 chars/);
   });
 });

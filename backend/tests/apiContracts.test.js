@@ -186,6 +186,7 @@ describe("HTTP API & Security Contracts", () => {
       }));
       mock.method(Analysis, "findOne", (query) => {
         assert.equal(query.contentHash, expectedHash);
+        assert.deepEqual(query.model, { $ne: "heuristic-ats-engine" });
         return {
           sort: async () => cachedAnalysis,
         };

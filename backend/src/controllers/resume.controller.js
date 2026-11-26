@@ -30,6 +30,7 @@ export const versionParamSchema = z.object({
 export const analysisBodySchema = z.object({
   versionId: objectIdSchema.optional(),
   targetRole: z.string().trim().max(120).optional(),
+  force: z.boolean().optional(),
 });
 
 export const rewriteBodySchema = z.object({
@@ -248,11 +249,15 @@ export const analyzeResumeVersion = asyncHandler(async (req, res) => {
     .update(`${version.rawText || ""}::${normalizedRole}`)
     .digest("hex");
 
-  // Check if an analysis with the exact same contentHash and versionId already exists
-  const existingAnalysis = await Analysis.findOne({
-    versionId: version._id,
-    contentHash,
-  }).sort({ createdAt: -1 });
+  // Check if an LLM-backed analysis with the same contentHash already exists.
+  // Heuristic fallbacks are excluded so Gemini automatically upgrades them once quota recovers.
+  const existingAnalysis = req.body.force
+    ? null
+    : await Analysis.findOne({
+        versionId: version._id,
+        contentHash,
+        model: { $ne: "heuristic-ats-engine" },
+      }).sort({ createdAt: -1 });
 
   if (existingAnalysis) {
     if (version.latestAnalysisId?.toString() !== existingAnalysis._id.toString()) {
