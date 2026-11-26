@@ -16,10 +16,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Node.js 20
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: "npm"
@@ -46,14 +46,14 @@ jobs:
           npm run build
 
   backend-syntax-and-audit:
-    name: Backend (Syntax, Test & Coverage)
+    name: Backend (Lint, Test & Coverage)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up Node.js 20
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: "npm"
@@ -69,6 +69,11 @@ jobs:
           cd backend
           find src -name "*.js" -print0 | xargs -0 -n1 node --check
 
+      - name: Lint Backend Code
+        run: |
+          cd backend
+          npm run lint
+
       - name: Run Backend Tests & Coverage Report
         run: |
           cd backend
@@ -79,7 +84,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Scan for committed .env files and leaked credentials
         run: |
@@ -109,7 +114,7 @@ jobs:
           echo "| Check | Outcome |" >> "$GITHUB_STEP_SUMMARY"
           echo "| :--- | :--- |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Frontend (Lint, Vitest & Build) | ${{ needs.frontend-build-and-lint.result }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| Backend (Syntax, Node/Supertest & Coverage) | ${{ needs.backend-syntax-and-audit.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Backend (Lint, Node/Supertest & Coverage) | ${{ needs.backend-syntax-and-audit.result }} |" >> "$GITHUB_STEP_SUMMARY"
           echo "| Secret & Credential Audit | ${{ needs.secret-leak-audit.result }} |" >> "$GITHUB_STEP_SUMMARY"
 
           if [ "${{ needs.frontend-build-and-lint.result }}" != "success" ] || \
