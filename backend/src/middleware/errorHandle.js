@@ -1,6 +1,6 @@
 import ApiError from "../utils/ApiError.js";
 import {ENV} from "../config/ENV.js";
-const errorHandler = (err, req, res, next) => {
+const errorHandler = (err, req, res, _next) => {
     let statusCode = err.statusCode || 500;
     let message = err.message || "Internal server error";
     let details = err.details;

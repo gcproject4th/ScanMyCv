@@ -45,7 +45,7 @@ export default function Export() {
 
   const { data, isLoading, error } = useResume(id);
   const resume = data?.resume;
-  const versions = data?.versions || [];
+  const versions = useMemo(() => data?.versions || [], [data?.versions]);
 
   useDocumentTitle(resume?.title ? `Export ${resume.title}` : "Export Resume");
   const [activeVersionId, setActiveVersionId] = useState(null);
@@ -270,7 +270,7 @@ export default function Export() {
   );
 }
 
-function PaperPreview({ version, user, title }) {
+function PaperPreview({ version, user }) {
   const p = version?.parsedSections || {};
   const b = p.basics || {};
   const displayName = b.name?.trim() || user?.name || "Your Name";

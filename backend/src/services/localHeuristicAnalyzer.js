@@ -21,11 +21,6 @@ const STRONG_ACTION_VERBS = [
   "automated", "reduced", "increased", "accelerated", "transformed", "delivered"
 ];
 
-const WEAK_ACTION_VERBS = [
-  "worked on", "helped", "assisted", "responsible for", "participated in",
-  "handled", "supported", "involved in"
-];
-
 export function analyzeResumeLocally({ rawText, targetRole }) {
   const text = String(rawText || "").trim();
   const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
@@ -56,8 +51,8 @@ export function analyzeResumeLocally({ rawText, targetRole }) {
   const metricDensity = metricMatches.length;
 
   // 4. Extract Bullets
-  const rawBullets = lines.filter((l) => /^[•\-\*–]\s*/.test(l) || (l.length > 40 && l.length < 180));
-  const cleanBullets = rawBullets.map((b) => b.replace(/^[•\-\*–]\s*/, "").trim());
+  const rawBullets = lines.filter((l) => /^[•\-*–]\s*/.test(l) || (l.length > 40 && l.length < 180));
+  const cleanBullets = rawBullets.map((b) => b.replace(/^[•\-*–]\s*/, "").trim());
 
   // 5. Score Sub-Breakdown (each 0 - 25)
   // Keywords (0 - 25)

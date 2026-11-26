@@ -28,11 +28,17 @@ export default [
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "warn",
       "no-unused-vars": ["warn", { varsIgnorePattern: "^[A-Z_]", argsIgnorePattern: "^_" }],
-      "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
+      "react-refresh/only-export-components": [
+        "warn",
+        {
+          allowConstantExport: true,
+          allowExportNames: ["badgeVariants", "buttonVariants"],
+        },
+      ],
     },
   },
   {
-    files: ["src/test/**/*.{js,jsx}", "**/*.test.{js,jsx}"],
+    files: ["src/context/**/*.{js,jsx}", "src/routes.jsx", "src/test/**/*.{js,jsx}", "**/*.test.{js,jsx}"],
     languageOptions: {
       globals: {
         ...globals.node,

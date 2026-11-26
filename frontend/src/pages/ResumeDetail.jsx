@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { Sparkles, ArrowLeft, Loader2, FileText, Download, CheckCircle2 } from "lucide-react";
 import { PageHeader } from "@/components/layout/PageHeader";
@@ -18,7 +18,7 @@ import { BulletRewrites } from "@/components/analysis/BulletRewrites";
 import { VersionSwitcher } from "@/components/resume/VersionSwitcher";
 import { DiffView } from "@/components/resume/DiffView";
 import { AIProgressStepper } from "@/components/analysis/AIProgressStepper";
-import { relativeTime, cn } from "@/lib/utils";
+import { relativeTime } from "@/lib/utils";
 import { useDocumentTitle } from "@/hooks/useDocumentTitle";
 import {
   useResume,
@@ -35,7 +35,7 @@ export default function ResumeDetail() {
 
   const { data, isLoading, error } = useResume(id);
   const resume = data?.resume;
-  const versions = data?.versions || [];
+  const versions = useMemo(() => data?.versions || [], [data?.versions]);
 
   useDocumentTitle(resume?.title ? `${resume.title} · Analysis` : "Resume Analysis");
 
@@ -59,16 +59,18 @@ export default function ResumeDetail() {
   const [targetRole, setTargetRole] = useState("");
   const [tab, setTab] = useState("score");
 
-  async function runAnalyze() {
+  const { mutateAsync: runAnalyzeMutation, isPending: isAnalyzePending } = analyze;
+
+  const runAnalyze = useCallback(async () => {
     try {
-      await analyze.mutateAsync({
+      await runAnalyzeMutation({
         versionId: activeVersionId,
         targetRole: targetRole.trim() || undefined,
       });
     } catch {
       /* surfaced below */
     }
-  }
+  }, [runAnalyzeMutation, activeVersionId, targetRole]);
 
   // Zero-friction scan loop: automatically trigger AI analysis when landing from an upload
   useEffect(() => {
@@ -77,13 +79,13 @@ export default function ResumeDetail() {
       activeVersionId &&
       !analysis &&
       !analysisQuery.isLoading &&
-      !analyze.isPending &&
+      !isAnalyzePending &&
       !autoTriggeredRef.current
     ) {
       autoTriggeredRef.current = true;
       runAnalyze();
     }
-  }, [location.state, activeVersionId, analysis, analysisQuery.isLoading, analyze.isPending]);
+  }, [location.state, activeVersionId, analysis, analysisQuery.isLoading, isAnalyzePending, runAnalyze]);
 
   async function runApplyRewrites(rewriteIds) {
     if (!analysis?._id) return;

@@ -1,5 +1,5 @@
 import ApiError from "../utils/ApiError.js";
-import { signToken, cookieOptions, getCookieOptions } from "../utils/jwt.js";
+import { signToken, getCookieOptions } from "../utils/jwt.js";
 import { ENV } from "../config/ENV.js";
 import User from "../models/user.model.js";
 import {

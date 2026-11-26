@@ -15,7 +15,7 @@ const KNOWN_SKILL_TOKENS = [
   "Jest", "Cypress", "Mocha", "Selenium", "Agile", "Scrum", "Jira"
 ];
 
-const BULLET_REGEX = /^[\s•\-\*–—▪▫◦▸►✓✔○●\u2022\u25cf\u25cb\u25aa\u25b8\d+\.\)]\s*/;
+const BULLET_REGEX = /^[\s•\-*–—▪▫◦▸►✓✔○●\u2022\u25cf\u25cb\u25aa\u25b8\d.)]\s*/;
 
 export function parseResumeLocally(rawText) {
   const text = String(rawText || "").trim();
@@ -28,7 +28,7 @@ export function parseResumeLocally(rawText) {
   let name = "";
   if (rawLines.length > 0) {
     for (let i = 0; i < Math.min(rawLines.length, 5); i++) {
-      const candidate = rawLines[i].replace(/[|•·\d\(\)\[\]]/g, "").trim();
+      const candidate = rawLines[i].replace(/[|•·\d()[\]]/g, "").trim();
       if (
         candidate.length >= 2 &&
         candidate.length <= 40 &&
