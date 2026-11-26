@@ -40,12 +40,12 @@ describe("HTTP API & Security Contracts", () => {
       assert.match(res.body.message, /not found/i);
     });
 
-    it("blocks disallowed CORS origins", async () => {
+    it("blocks disallowed CORS origins with 403 Forbidden", async () => {
       const res = await request(app)
         .get("/api/health")
         .set("Origin", "https://malicious.example.com");
 
-      assert.equal(res.status, 500);
+      assert.equal(res.status, 403);
       assert.match(res.body.message, /CORS policy blocked/);
     });
   });

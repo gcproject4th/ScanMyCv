@@ -12,6 +12,7 @@ initBackendSentry();
 import healthRouter from "./routes/health.js";
 import { errorHandler, notFound } from "./middleware/errorHandle.js";
 import { ENV } from "./config/ENV.js";
+import ApiError from "./utils/ApiError.js";
 import AuthRouter from "./routes/auth.router.js";
 import resumeRouter from "./routes/resumes.js";
 import dashboardRouter from "./routes/dashboard.js";
@@ -40,7 +41,7 @@ app.use(
       if (!origin || ENV.clientOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(new Error(`CORS policy blocked access for origin: ${origin}`));
+        callback(ApiError.forbidden(`CORS policy blocked access for origin: ${origin}`));
       }
     },
     credentials: true, // Required for HTTP-only cross-origin cookies
