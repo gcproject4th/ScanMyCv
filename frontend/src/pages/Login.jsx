@@ -12,9 +12,12 @@ import AILogo from "@/components/layout/AILogo";
 import { OAuthButtons } from "@/components/auth/OAuthButtons";
 import { Checkbox } from "@/components/ui/Checkbox";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/context/UIContext";
+import { formatAuthError } from "@/api/auth";
 
 export default function Login() {
   const { login } = useAuth();
+  const toast = useToast();
   const nav = useNavigate();
   const [searchParams] = useSearchParams();
   const oauthError = searchParams.get("error");
@@ -41,6 +44,13 @@ export default function Login() {
 
   const handleLogin = async () => {
     setErr("");
+    if (!form.email.trim() || !form.password) {
+      const msg = "Please enter both your email and password.";
+      setErr(msg);
+      toast.error("Sign in failed", msg);
+      return;
+    }
+
     setLoading(true);
     try {
       await login({ ...form, rememberMe });
@@ -57,7 +67,9 @@ export default function Login() {
       }
       nav("/dashboard");
     } catch (e) {
-      setErr(e.message || "Login failed");
+      const msg = formatAuthError(e, "Wrong password or email. Please try again.");
+      setErr(msg);
+      toast.error("Sign in failed", msg);
       setLoading(false); // Only reset loading on failure; navigation handles unmount on success
     }
   };
@@ -104,7 +116,10 @@ export default function Login() {
             type="email"
             autoComplete="email"
             value={form.email}
-            onChange={(v) => setForm((prev) => ({ ...prev, email: v }))}
+            onChange={(v) => {
+              if (err) setErr("");
+              setForm((prev) => ({ ...prev, email: v }));
+            }}
             placeholder="you@example.com"
             icon={Mail}
           />
@@ -114,7 +129,10 @@ export default function Login() {
             type="password"
             autoComplete="current-password"
             value={form.password}
-            onChange={(v) => setForm((prev) => ({ ...prev, password: v }))}
+            onChange={(v) => {
+              if (err) setErr("");
+              setForm((prev) => ({ ...prev, password: v }));
+            }}
             placeholder="••••••••"
             icon={Lock}
             extra={

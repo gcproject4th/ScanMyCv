@@ -26,14 +26,19 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (res) => res,
   (err) => {
-    const message =
+    const status = err.response?.status;
+    const rawMsg =
       err.response?.data?.message ||
       err.response?.data?.error?.message ||
       (typeof err.response?.data === "string" ? err.response.data : null) ||
       err.message ||
       "Request failed";
+    const message =
+      status === 401 && /^Request failed with status code 401$/i.test(rawMsg)
+        ? "Invalid email or password"
+        : rawMsg;
     return Promise.reject({
-      status: err.response?.status,
+      status,
       message,
       details: err.response?.data?.details || err.response?.data?.error?.details,
       original: err,

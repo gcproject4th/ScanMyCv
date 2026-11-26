@@ -11,9 +11,12 @@ import {
 import AILogo from "@/components/layout/AILogo";
 import { OAuthButtons } from "@/components/auth/OAuthButtons";
 import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/context/UIContext";
+import { formatAuthError } from "@/api/auth";
 
 export default function Register() {
   const { register } = useAuth();
+  const toast = useToast();
   const nav = useNavigate();
   const [searchParams] = useSearchParams();
   const oauthError = searchParams.get("error");
@@ -31,7 +34,9 @@ export default function Register() {
       await register(form);
       nav("/dashboard");
     } catch (e) {
-      setErr(e.message || "Registration failed");
+      const msg = formatAuthError(e, "Registration failed. Please check your details.");
+      setErr(msg);
+      toast.error("Registration failed", msg);
     } finally {
       setLoading(false);
     }

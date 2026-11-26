@@ -198,6 +198,7 @@ export function AuthErrorBanner({ children }) {
   if (!children) return null;
   return (
     <motion.div
+      role="alert"
       initial={{ opacity: 0, y: -4 }}
       animate={{ opacity: 1, y: 0 }}
       className="text-xs text-[var(--danger)] bg-[#F8E3E0] rounded-2xl px-4 py-2.5 leading-snug"
